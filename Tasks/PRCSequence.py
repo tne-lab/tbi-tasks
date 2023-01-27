@@ -1,16 +1,17 @@
 from enum import Enum
 
 from Tasks.TaskSequence import TaskSequence
-from Tasks.Raw import Raw
-from Tasks.ClosedLoop import ClosedLoop
+from ..Tasks.Raw import Raw
+from ..Tasks.ClosedLoop import ClosedLoop
 
 class PRCSequence(TaskSequence):
     """@DynamicAttrs"""
     class States(Enum):
-        PRE_BASELINE = 0 
-        ON_EPOCH = 1
-        OFF_EPOCH = 2
-        POST_BASELINE = 3
+        PHASE_LOCKING = 0
+        PRE_BASELINE = 1
+        ON_EPOCH = 2
+        OFF_EPOCH = 3
+        POST_BASELINE = 4
 
     @staticmethod
     def get_tasks():
@@ -19,6 +20,7 @@ class PRCSequence(TaskSequence):
     def get_constants(self):
         return {
             "num_trials": 10,
+            'phase_locking_protocol': None,
             "pre_baseline_protocol": None,
             "on_epoch_protocol": None,
             "off_epoch_protocol": None,
@@ -39,10 +41,14 @@ class PRCSequence(TaskSequence):
         self.house_light.toggle(False)
 
     def init_state(self):
-        return self.States.PRE_BASELINE
+        return self.States.PHASE_LOCKING
 
     def init_sequence(self):
-        return Raw, self.pre_baseline_protocol
+        return Raw, self.phase_locking_protocol
+
+    def PHASE_LOCKING(self):
+        if self.cur_task.is_complete():
+            self.switch_task(Raw, self.States.PRE_BASELINE, self.pre_baseline_protocol)
 
     def PRE_BASELINE(self):
         if self.cur_task.is_complete():
