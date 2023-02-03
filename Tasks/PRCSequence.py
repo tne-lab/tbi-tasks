@@ -4,11 +4,13 @@ from Tasks.TaskSequence import TaskSequence
 from ..Tasks.Raw import Raw
 from ..Tasks.ClosedLoop import ClosedLoop
 
+
 class PRCSequence(TaskSequence):
     """@DynamicAttrs"""
+
     class States(Enum):
-        PHASE_LOCKING = 0
-        PRE_BASELINE = 1
+        PRE_BASELINE = 0
+        PHASE_LOCKING = 1
         ON_EPOCH = 2
         OFF_EPOCH = 3
         POST_BASELINE = 4
@@ -31,7 +33,7 @@ class PRCSequence(TaskSequence):
         return {
             "cur_trial": 0
         }
-    
+
     def start(self):
         self.fan.toggle(True)
         self.house_light.toggle(True)
@@ -41,16 +43,16 @@ class PRCSequence(TaskSequence):
         self.house_light.toggle(False)
 
     def init_state(self):
-        return self.States.PHASE_LOCKING
+        return self.States.PRE_BASELINE
 
     def init_sequence(self):
-        return Raw, self.phase_locking_protocol
-
-    def PHASE_LOCKING(self):
-        if self.cur_task.is_complete():
-            self.switch_task(Raw, self.States.PRE_BASELINE, self.pre_baseline_protocol)
+        return Raw, self.pre_baseline_protocol
 
     def PRE_BASELINE(self):
+        if self.cur_task.is_complete():
+            self.switch_task(ClosedLoop, self.States.PHASE_LOCKING, self.phase_locking_protocol)
+
+    def PHASE_LOCKING(self):
         if self.cur_task.is_complete():
             self.switch_task(ClosedLoop, self.States.ON_EPOCH, self.on_epoch_protocol)
 
@@ -68,5 +70,7 @@ class PRCSequence(TaskSequence):
 
     def is_complete(self):
         return self.state == self.States.POST_BASELINE and self.cur_task.is_complete()
+
+
 
     
