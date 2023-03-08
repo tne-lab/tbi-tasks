@@ -13,7 +13,7 @@ from Elements.InfoBoxElement import InfoBoxElement
 from Events.InputEvent import InputEvent
 from GUIs import Colors
 from GUIs.GUI import GUI
-from Tasks.PMA import PMA
+from ..Tasks.PMA import PMA
 
 
 class PMAGUI(GUI):

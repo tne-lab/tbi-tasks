@@ -20,11 +20,21 @@ class ClosedLoopGUI(GUI):
                 return [str(task.pulse_count)]
             else:
                 return [str(0)]
-
-        ne = InfoBoxElement(self, 372, 125, 50, 15, "Total Pulses", 'BOTTOM', ['0'])
-        ne.get_text = MethodType(total_pulses, ne)
-        self.info_boxes.append(ne)
+                
+        #def next_event(self):
+        #    if task.started:
+        #        return [str(math.ceil(60*task.duration - task.time_in_state()))]
+        #    else:
+        #        return [str(0)]
+                
+        tp = InfoBoxElement(self, 100, 125, 50, 15, "Total Pulses", 'BOTTOM', ['0'])
+        tp.get_text = MethodType(total_pulses, tp)
+        self.info_boxes.append(tp)
         #self.fan = FanElement(self.task_gui, 210, 20, 40, comp=task.fan)
+        
+        #ne = InfoBoxElement(self, 372, 125, 50, 15, "NEXT EVENT", 'BOTTOM', ['0'])
+        #ne.get_text = MethodType(next_event, ne)
+        #self.info_boxes.append(ne)
 
     def get_elements(self) -> List[Element]:
         return [*self.info_boxes]
