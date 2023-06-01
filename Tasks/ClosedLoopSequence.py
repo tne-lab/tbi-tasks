@@ -4,7 +4,6 @@ from Tasks.TaskSequence import TaskSequence
 from ..Tasks.Raw import Raw
 from ..Tasks.ERP import ERP
 from ..Tasks.ClosedLoop import ClosedLoop
-from ..Tasks.PMA import PMA
 
 
 class ClosedLoopSequence(TaskSequence):
@@ -13,13 +12,19 @@ class ClosedLoopSequence(TaskSequence):
         PRE_RAW = 0
         PRE_ERP = 1
         CLOSED_LOOP = 2
-        PMA = 4
-        POST_ERP = 4
-        POST_RAW = 5
+        POST_ERP = 3
+        POST_RAW_RECORD = 4
+        POST_RAW_NORECORD = 5
 
     @staticmethod
     def get_tasks():
-        return [Raw, ERP, ClosedLoop, PMA]
+        return [Raw, ERP, ClosedLoop]
+
+    # noinspection PyMethodMayBeStatic
+    def get_variables(self):
+        return {
+            'raw_num': 1
+        }
 
     # noinspection PyMethodMayBeStatic
     def get_constants(self):
@@ -27,9 +32,10 @@ class ClosedLoopSequence(TaskSequence):
             'pre_raw_protocol': None,
             'pre_erp_protocol': None,
             'closed_loop_protocol': None,
-            'pma_protocol': None,
             'post_erp_protocol': None,
-            'post_raw_protocol': None
+            'post_raw_record_protocol': None,
+            'post_raw_norecord_protocol': None,
+            'post_recordings': 6
         }
 
     def start(self):
@@ -56,15 +62,20 @@ class ClosedLoopSequence(TaskSequence):
 
     def CLOSED_LOOP(self):
         if self.cur_task.is_complete():
-            self.switch_task(PMA, self.States.PMA, self.pma_protocol)
-
-    def PMA(self):
-        if self.cur_task.is_complete():
             self.switch_task(ERP, self.States.POST_ERP, self.post_erp_protocol)
 
     def POST_ERP(self):
         if self.cur_task.is_complete():
-            self.switch_task(Raw, self.States.POST_RAW, self.post_raw_protocol)
+            self.switch_task(Raw, self.States.POST_RAW_RECORD, self.post_raw_record_protocol)
+
+    def POST_RAW_RECORD(self):
+        if self.cur_task.is_complete():
+            self.switch_task(Raw, self.States.POST_RAW_NORECORD, self.post_raw_norecord_protocol)
+
+    def POST_RAW_NORECORD(self):
+        if self.cur_task.is_complete() and self.raw_num < self.post_recordings:
+            self.switch_task(Raw, self.States.POST_RAW_RECORD, self.post_raw_record_protocol)
+            self.raw_num += 1
 
     def is_complete(self):
-        return self.state == self.States.POST_RAW and self.cur_task.is_complete()
+        return self.state == self.States.POST_RAW_NORECORD and self.cur_task.is_complete() and self.raw_num == self.post_recordings

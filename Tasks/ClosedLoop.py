@@ -4,6 +4,7 @@ import numpy as np
 from Tasks.Task import Task
 from Components.BinaryInput import BinaryInput
 from Components.Stimmer import Stimmer
+from Components.ParametricStim import ParametricStim
 from Events.InputEvent import InputEvent
 
 from Events.OEEvent import OEEvent
@@ -25,19 +26,23 @@ class ClosedLoop(Task):
         return {
             'threshold': [BinaryInput],
             'stim': [Stimmer],
-            'sham': [Stimmer]
+            'sham': [Stimmer],
+            'setup': [ParametricStim]
         }
 
     # noinspection PyMethodMayBeStatic
     def get_constants(self):
         return {
+            'ephys': False,
             'record_lockout': 4,
             'duration': 30,
             'min_pulse_separation': 2,
-            'stim_dur': 180,
-            'period': 180,
-            'amps': ([[1, -1]]),
-            'pws': [90, 90]
+            'stim_dur': 1800,
+            'period': 1800,
+            'amps': ([[100, -100], [0, 0]]),
+            'pws': [100, 100],
+            'trig_amp': [[3.3]],
+            'trig_dur': [100]
         }
 
     # noinspection PyMethodMayBeStatic
@@ -54,9 +59,12 @@ class ClosedLoop(Task):
         return self.States.START_RECORD
 
     def start(self):
-        self.stim.parametrize(0, 1, self.stim_dur, self.period, np.array(self.amps), self.pws)
-        self.sham.parametrize(0, 1, self.stim_dur, self.period, np.array(self.amps), self.pws)
-        self.events.append(OEEvent(self, "startRecording", {"pre": "ClosedLoop"}))
+        self.setup.parametrize(0, [1, 0], self.stim_dur, self.period, np.array(self.amps), self.pws)
+        self.setup.trigger(0, 0)
+        self.stim.parametrize(0, 1, self.stim_dur, self.period, np.array(self.trig_amp), self.trig_dur)
+        self.sham.parametrize(0, 1, self.stim_dur, self.period, np.array(self.trig_amp), self.trig_dur)
+        if self.ephys:
+            self.events.append(OEEvent(self, "startRecord", {"pre": "ClosedLoop"}))
 
     def handle_input(self) -> None:
         self.thr = self.threshold.check()
@@ -68,7 +76,8 @@ class ClosedLoop(Task):
     def CLOSED_LOOP(self):
         if self.cur_time - self.last_pulse_time > self.min_pulse_separation and self.time_in_state() > self.duration * 60:
             self.change_state(self.States.STOP_RECORD)
-            self.events.append(OEEvent(self, "stopRecording"))
+            if self.ephys:
+                self.events.append(OEEvent(self, "stopRecord"))
         else:
             if self.cur_time - self.last_pulse_time > self.min_pulse_separation:
                 if self.thr == BinaryInput.ENTERED:
