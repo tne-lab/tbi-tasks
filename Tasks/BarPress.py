@@ -6,8 +6,10 @@ from Components.BinaryInput import BinaryInput
 from Components.Toggle import Toggle
 from Components.TimedToggle import TimedToggle
 from Components.Video import Video
-from Events.InputEvent import InputEvent
+from Events import PybEvents
+from ..GUIs.BarPressGUI import BarPressGUI
 from Tasks.Task import Task
+
 
 
 class BarPress(Task):
@@ -15,10 +17,6 @@ class BarPress(Task):
     class States(Enum):
         REWARD_AVAILABLE = 0
         REWARD_UNAVAILABLE = 1
-
-    class Inputs(Enum):
-        LEVER_PRESSED = 0
-        LEVER_DEPRESSED = 1
 
     @staticmethod
     def get_components():
@@ -46,14 +44,14 @@ class BarPress(Task):
     def get_variables(self):
         return {
             'lockout': 0,
-            'presses': 0,
-            'pressed': False
+            'presses': 0
         }
 
     def init_state(self):
         return self.States.REWARD_AVAILABLE
 
     def start(self):
+        self.set_timeout("task_complete", self.duration * 60, end_with_state=False)
         self.cage_light.toggle(True)
         self.cam.start()
         self.fan.toggle(True)
@@ -67,27 +65,25 @@ class BarPress(Task):
         self.lever_out.toggle(False)
         self.cam.stop()
 
-    def handle_input(self) -> None:
-        food_lever = self.food_lever.check()
-        self.pressed = False
-        if food_lever == BinaryInput.ENTERED:
-            self.events.append(InputEvent(self, self.Inputs.LEVER_PRESSED))
-            self.pressed = True
-            self.presses += 1
-        elif food_lever == BinaryInput.EXIT:
-            self.events.append(InputEvent(self, self.Inputs.LEVER_DEPRESSED))
+    def all_states(self, event: PybEvents.PybEvent) -> bool:
+        if isinstance(event, PybEvents.TimeoutEvent) and event.name == "task_complete":
+            self.complete = True
+            return True
+        elif isinstance(event, PybEvents.GUIEvent) and event.event == BarPressGUI.Events.GUI_PELLET:
+            self.food.toggle(self.dispense_time)
+            return True
+        return False
 
-    def REWARD_AVAILABLE(self):
-        if self.pressed:
+    def REWARD_AVAILABLE(self, event: PybEvents.PybEvent):
+        if isinstance(event, PybEvents.ComponentChangedEvent) and event.comp == self.food_lever and event.comp.state:
             self.food.toggle(self.dispense_time)
             if self.reward_lockout:
                 self.lockout = self.reward_lockout_min + random.random() * (
                             self.reward_lockout_max - self.reward_lockout_min)
                 self.change_state(self.States.REWARD_UNAVAILABLE)
 
-    def REWARD_UNAVAILABLE(self):
-        if self.time_in_state() > self.lockout:
+    def REWARD_UNAVAILABLE(self, event: PybEvents.PybEvent):
+        if isinstance(event, PybEvents.StateEnterEvent):
+            self.set_timeout("lockout", self.lockout)
+        elif isinstance(event, PybEvents.TimeoutEvent) and event.name == "lockout":
             self.change_state(self.States.REWARD_AVAILABLE)
-
-    def is_complete(self):
-        return self.time_elapsed() > self.duration * 60.0

@@ -10,53 +10,51 @@ from Elements.SoundElement import SoundElement
 from Elements.ShockElement import ShockElement
 from Elements.ButtonElement import ButtonElement
 from Elements.InfoBoxElement import InfoBoxElement
-from Events.InputEvent import InputEvent
-from GUIs import Colors
 from GUIs.GUI import GUI
-from ..Tasks.PMA import PMA
+
+
+class Events(Enum):
+    GUI_PELLET = 0
 
 
 class PMAGUI(GUI):
-    class Inputs(Enum):
-        GUI_PELLET = 0
 
     def __init__(self, task_gui, task):
         super().__init__(task_gui, task)
         self.info_boxes = []
 
-        def feed_mouse_up(self, _):
-            self.clicked = False
-            task.food.toggle(task.dispense_time)
-            task.events.append(InputEvent(task, PMAGUI.Inputs.GUI_PELLET))
+        def feed_mouse_up(el):
+            el.clicked = False
+            self.log_gui_event(Events.GUI_PELLET)
 
-        def pellets_text(self):
+        def pellets_text(_):
             return [str(task.food.count)]
 
-        def presses_text(self):
+        def presses_text(_):
             return [str(task.presses)]
 
-        def tone_count_text(self):
+        def tone_count_text(_):
             return [str(task.cur_trial)]
 
-        def reward_available(self):
+        def reward_available(_):
             return task.food_light.get_state()
 
-        def next_event(self):
-            if task.state == PMA.States.INTER_TONE_INTERVAL:
+        def next_event(_):
+            if task.state == task.States.INTER_TONE_INTERVAL:
                 if task.random:
                     return [str(math.ceil(task.iti - task.time_in_state()))]
                 else:
                     return [str(math.ceil(task.time_sequence[task.cur_trial] - task.time_in_state()))]
-            elif task.state == PMA.States.TONE:
+            elif task.state == task.States.TONE:
                 return [str(math.ceil(task.tone_duration - task.time_in_state()))]
-            elif task.state == PMA.States.SHOCK:
+            elif task.state == task.States.SHOCK:
                 return [str(math.ceil(task.shock_duration - task.time_in_state()))]
-            elif task.state == PMA.States.POST_SESSION:
+            elif task.state == task.States.POST_SESSION:
                 return [str(math.ceil(task.post_session_time - task.time_in_state()))]
             else:
                 return [str(0)]
 
-        def event_countup(self):
+        def event_countup(_):
             return [str(round(task.time_elapsed() / 60, 2))]
 
         self.lever = BarPressElement(self, 77, 25, 100, 90, comp=task.food_lever)

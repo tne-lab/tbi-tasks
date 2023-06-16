@@ -1,5 +1,6 @@
 from enum import Enum
 
+from Events import PybEvents
 from Tasks.TaskSequence import TaskSequence
 from ..Tasks.Raw import Raw
 from ..Tasks.ERP import ERP
@@ -49,33 +50,39 @@ class ClosedLoopSequence(TaskSequence):
     def init_state(self):
         return self.States.PRE_RAW
 
-    def init_sequence(self):
-        return Raw, self.pre_raw_protocol
+    def PRE_RAW(self, event: PybEvents.PybEvent) -> bool:
+        if isinstance(event, PybEvents.StateEnterEvent) and event.task is self:
+            self.switch_task(Raw, self.pre_raw_protocol)
+            return True
+        elif isinstance(event, PybEvents.TaskCompleteEvent):
+            self.switch_task(ERP, self.pre_erp_protocol, new_state=self.States.PRE_ERP)
+            return True
 
-    def PRE_RAW(self):
-        if self.cur_task.is_complete():
-            self.switch_task(ERP, self.States.PRE_ERP, self.pre_erp_protocol)
+    def PRE_ERP(self, event: PybEvents.PybEvent) -> bool:
+        if isinstance(event, PybEvents.TaskCompleteEvent):
+            self.switch_task(ClosedLoop, self.closed_loop_protocol, new_state=self.States.CLOSED_LOOP)
+            return True
 
-    def PRE_ERP(self):
-        if self.cur_task.is_complete():
-            self.switch_task(ClosedLoop, self.States.CLOSED_LOOP, self.closed_loop_protocol)
+    def CLOSED_LOOP(self, event: PybEvents.PybEvent) -> bool:
+        if isinstance(event, PybEvents.TaskCompleteEvent):
+            self.switch_task(ERP, self.post_erp_protocol, new_state=self.States.POST_ERP)
+            return True
 
-    def CLOSED_LOOP(self):
-        if self.cur_task.is_complete():
-            self.switch_task(ERP, self.States.POST_ERP, self.post_erp_protocol)
+    def POST_ERP(self, event: PybEvents.PybEvent) -> bool:
+        if isinstance(event, PybEvents.TaskCompleteEvent):
+            self.switch_task(Raw, self.post_raw_record_protocol, new_state=self.States.POST_RAW_RECORD)
+            return True
 
-    def POST_ERP(self):
-        if self.cur_task.is_complete():
-            self.switch_task(Raw, self.States.POST_RAW_RECORD, self.post_raw_record_protocol)
+    def POST_RAW_RECORD(self, event: PybEvents.PybEvent) -> bool:
+        if isinstance(event, PybEvents.TaskCompleteEvent):
+            if self.raw_num == self.post_recordings:
+                self.complete = True
+            else:
+                self.switch_task(Raw, self.post_raw_norecord_protocol, new_state=self.States.POST_RAW_NORECORD)
+            return True
 
-    def POST_RAW_RECORD(self):
-        if self.cur_task.is_complete():
-            self.switch_task(Raw, self.States.POST_RAW_NORECORD, self.post_raw_norecord_protocol)
-
-    def POST_RAW_NORECORD(self):
-        if self.cur_task.is_complete() and self.raw_num < self.post_recordings:
-            self.switch_task(Raw, self.States.POST_RAW_RECORD, self.post_raw_record_protocol)
+    def POST_RAW_NORECORD(self, event: PybEvents.PybEvent) -> bool:
+        if isinstance(event, PybEvents.TaskCompleteEvent):
+            self.switch_task(Raw, self.post_raw_record_protocol, new_state=self.States.POST_RAW_RECORD)
             self.raw_num += 1
-
-    def is_complete(self):
-        return self.state == self.States.POST_RAW_NORECORD and self.cur_task.is_complete() and self.raw_num == self.post_recordings
+            return True

@@ -7,34 +7,31 @@ from Elements.BarPressElement import BarPressElement
 from Elements.Element import Element
 from Elements.ButtonElement import ButtonElement
 from Elements.InfoBoxElement import InfoBoxElement
-from Events.InputEvent import InputEvent
-from GUIs import Colors
 from GUIs.GUI import GUI
 
 
 class BarPressGUI(GUI):
-    class Inputs(Enum):
+    class Events(Enum):
         GUI_PELLET = 0
 
     def __init__(self, task_gui, task):
         super().__init__(task_gui, task)
         self.info_boxes = []
 
-        def feed_mouse_up(self, _):
+        def feed_mouse_up(_):
             self.clicked = False
-            task.food.toggle(task.dispense_time)
-            task.events.append(InputEvent(task, BarPressGUI.Inputs.GUI_PELLET))
+            self.log_gui_event(self.Events.GUI_PELLET)
 
-        def pellets_text(self):
+        def pellets_text(_):
             return [str(task.food.count)]
 
-        def presses_text(self):
+        def presses_text(_):
             return [str(task.presses)]
 
-        def event_countup(self):
+        def event_countup(_):
             return [str(round(task.time_elapsed() / 60, 2))]
 
-        def vi_countdown(self):
+        def vi_countdown(_):
             if task.state == task.States.REWARD_UNAVAILABLE:
                 return [str(max([0, math.ceil(task.lockout - task.time_in_state())]))]
             else:
