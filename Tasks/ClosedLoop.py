@@ -1,10 +1,11 @@
+import time
 from enum import Enum
 
 import numpy as np
 from Tasks.Task import Task
 from Components.BinaryInput import BinaryInput
 from Components.Stimmer import Stimmer
-from Components.ParametricStim import ParametricStim
+from Components.StimJim import StimJim
 from Events.InputEvent import InputEvent
 
 from Events.OEEvent import OEEvent
@@ -27,7 +28,7 @@ class ClosedLoop(Task):
             'threshold': [BinaryInput],
             'stim': [Stimmer],
             'sham': [Stimmer],
-            'setup': [ParametricStim]
+            'setup': [StimJim]
         }
 
     # noinspection PyMethodMayBeStatic
