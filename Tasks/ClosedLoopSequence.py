@@ -35,7 +35,8 @@ class ClosedLoopSequence(TaskSequence):
             'post_erp_protocol': None,
             'post_raw_record_protocol': None,
             'post_raw_norecord_protocol': None,
-            'post_recordings': 6
+            'post_recordings': 6,
+            'do_erps': True
         }
 
     def start(self):
@@ -54,7 +55,10 @@ class ClosedLoopSequence(TaskSequence):
 
     def PRE_RAW(self):
         if self.cur_task.is_complete():
-            self.switch_task(ERP, self.States.PRE_ERP, self.pre_erp_protocol)
+            if self.do_erps:
+                self.switch_task(ERP, self.States.PRE_ERP, self.pre_erp_protocol)
+            else:
+                self.switch_task(ClosedLoop, self.States.CLOSED_LOOP, self.closed_loop_protocol)
 
     def PRE_ERP(self):
         if self.cur_task.is_complete():
@@ -62,7 +66,10 @@ class ClosedLoopSequence(TaskSequence):
 
     def CLOSED_LOOP(self):
         if self.cur_task.is_complete():
-            self.switch_task(ERP, self.States.POST_ERP, self.post_erp_protocol)
+            if self.do_erps:
+                self.switch_task(ERP, self.States.POST_ERP, self.post_erp_protocol)
+            else:
+                self.switch_task(Raw, self.States.POST_RAW_RECORD, self.post_raw_record_protocol)
 
     def POST_ERP(self):
         if self.cur_task.is_complete():
